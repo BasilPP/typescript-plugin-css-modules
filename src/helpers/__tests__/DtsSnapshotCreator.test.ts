@@ -31,6 +31,7 @@ describe('utils / cssSnapshots', () => {
         processor,
         testFile,
         fullFileName,
+        ['./src/helpers/__tests__/fixtures/'],
       );
     });
 

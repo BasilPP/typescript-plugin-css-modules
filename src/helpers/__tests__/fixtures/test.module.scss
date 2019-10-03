@@ -44,7 +44,7 @@ $color: rebeccapurple !default;
   }
 }
 
-@import 'mixin';
+@import '_mixin';
 
 .class-with-mixin {
   @include set-margin(0);

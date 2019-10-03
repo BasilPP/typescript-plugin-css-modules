@@ -37,21 +37,31 @@ const getFilePath = (fileName: string) =>
 export class DtsSnapshotCreator {
   constructor(private readonly logger: Logger) {}
 
-  getClasses(processor: postcss.Processor, css: string, fileName: string) {
+  getClasses(
+    processor: postcss.Processor,
+    css: string,
+    fileName: string,
+    includePaths: string[],
+  ) {
     try {
       const fileType = getFileType(fileName);
       let transformedCss = '';
 
       if (fileType === FileTypes.less) {
-        less.render(css, { asyncImport: true } as any, (err, output) => {
-          transformedCss = output.css.toString();
-        });
+        const filePath = getFilePath(fileName);
+        less.render(
+          css,
+          { asyncImport: true, paths: [...includePaths, filePath] } as any,
+          (err, output) => {
+            transformedCss = output.css.toString();
+          },
+        );
       } else if (fileType === FileTypes.scss) {
         const filePath = getFilePath(fileName);
         transformedCss = sass
           .renderSync({
             data: css,
-            includePaths: [filePath],
+            includePaths: [...includePaths, filePath],
           })
           .css.toString();
       } else {
@@ -59,7 +69,6 @@ export class DtsSnapshotCreator {
       }
 
       const processedCss = processor.process(transformedCss);
-
       return processedCss.root
         ? extractICSS(processedCss.root).icssExports
         : {};
@@ -101,6 +110,7 @@ export default classes;
     fileName: string,
     scriptSnapshot: ts.IScriptSnapshot,
     options: Options,
+    includePaths: string[],
   ) {
     const css = scriptSnapshot.getText(0, scriptSnapshot.getLength());
 
@@ -110,7 +120,7 @@ export default classes;
       return scriptSnapshot;
     }
 
-    const classes = this.getClasses(processor, css, fileName);
+    const classes = this.getClasses(processor, css, fileName, includePaths);
     const dts = this.createExports(classes, options);
     return ts.ScriptSnapshot.fromString(dts);
   }

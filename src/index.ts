@@ -34,7 +34,19 @@ function init({ typescript: ts }: { typescript: typeof ts_module }) {
   function create(info: ts.server.PluginCreateInfo) {
     const logger = createLogger(info);
     const dtsSnapshotCreator = new DtsSnapshotCreator(logger);
-    const postcssConfig = getPostCssConfig(info.project.getCurrentDirectory());
+
+    // User options for plugin.
+    const options: Options = info.config.options || {};
+    let includePaths: string[] = [];
+    if (options.paths) {
+      const basePath: string = info.project.getCurrentDirectory();
+      includePaths = options.paths.map((x: string) => `${basePath}/${x}`);
+    }
+    logger.log(`options: ${JSON.stringify(options)}`);
+
+    const postcssConfig = options.paths
+      ? { plugins: [] }
+      : getPostCssConfig(info.project.getCurrentDirectory());
     const processor = postcss([
       removePlugin(),
       ...postcssConfig.plugins.filter(
@@ -43,11 +55,6 @@ function init({ typescript: ts }: { typescript: typeof ts_module }) {
       ),
       postcssIcssSelectors({ mode: 'local' }),
     ]);
-
-    // User options for plugin.
-    const options: Options = info.config.options || {};
-
-    logger.log(`options: ${JSON.stringify(options)}`);
 
     // Create matchers using options object.
     const { isCSS, isRelativeCSS } = createMatchers(logger, options);
@@ -67,6 +74,7 @@ function init({ typescript: ts }: { typescript: typeof ts_module }) {
           fileName,
           scriptSnapshot,
           options,
+          includePaths,
         );
       }
       const sourceFile = _createLanguageServiceSourceFile(
@@ -94,6 +102,7 @@ function init({ typescript: ts }: { typescript: typeof ts_module }) {
           sourceFile.fileName,
           scriptSnapshot,
           options,
+          includePaths,
         );
       }
       sourceFile = _updateLanguageServiceSourceFile(
